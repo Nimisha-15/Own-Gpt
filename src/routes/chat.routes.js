@@ -4,7 +4,7 @@ const authMiddleWare = require("../middleware/auth.middleware")
 
 const ChatRouter = express.Router()
 
-ChatRouter.get('/create-chat' , authMiddleWare, newChatController)
+ChatRouter.post('/create-chat' , authMiddleWare, newChatController)
 ChatRouter.get('/get-chat' , authMiddleWare, getChats)
 ChatRouter.post('/delete-chat' , authMiddleWare, deleteChats)
 

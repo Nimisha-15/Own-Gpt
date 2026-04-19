@@ -47,7 +47,8 @@ const registerController = async (req, res) => {
     return res.status(201).json({
       success: true,
       message: "User registered successfully!",
-      user: { id: newUser._id, name: newUser.name, email: newUser.email }
+      token,
+      user: { _id: newUser._id, name: newUser.name, email: newUser.email }
     });
 
     } catch (error) {
@@ -103,7 +104,8 @@ res.cookie("token", token, cookieOptions);
     return res.status(200).json({
       success: true,
       message: "Login successful",
-      user: { id: user._id, name: user.name, email: user.email }
+      token,
+      user: { _id: user._id, name: user.name, email: user.email }
     });
 
   } catch (error) {

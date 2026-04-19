@@ -4,7 +4,8 @@ const userModel = require("../models/user.model")
 
 const authMiddleWare = async (req ,res ,next)=>{
     try {
-        let token = req.cookies.token ;
+        // Extract token from Header or Cookie
+        const token = req.headers.authorization?.split(" ")[1] || req.cookies?.token;
          
         if(!token){
             return res.status(401).json({
