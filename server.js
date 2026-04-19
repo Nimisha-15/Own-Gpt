@@ -18,10 +18,11 @@ app.post('/api/stripe', express.raw({ type: 'application/json' }), stripeWebhook
 
 // Middlewares (after webhook!)
 app.use(cors({
-  origin:[
-    "http://localhost:5173", 
-  ],
-  credentials : true,
+  origin: [
+    "http://localhost:5173",
+    process.env.FRONTEND_URL, // Add your deployed frontend URL in .env
+  ].filter(Boolean), 
+  credentials: true,
 }));
 app.use(express.json());
 app.use(cookieParser());
@@ -33,7 +34,7 @@ app.use('/api/chat', ChatRouter);
 app.use('/api/message', messageRouter);
 app.use('/api/payment', PaymentRouter);
 
-const port = process.env.port || 4500;
+const port = process.env.PORT || 4500;
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
