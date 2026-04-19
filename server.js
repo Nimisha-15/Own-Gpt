@@ -20,7 +20,9 @@ app.post('/api/stripe', express.raw({ type: 'application/json' }), stripeWebhook
 app.use(cors({
   origin: [
     "http://localhost:5173",
-    process.env.FRONTEND_URL, // Add your deployed frontend URL in .env
+    "http://localhost:5174",
+    "http://localhost:3000",
+    process.env.FRONTEND_URL, // Deployed URL via .env
   ].filter(Boolean), 
   credentials: true,
 }));
