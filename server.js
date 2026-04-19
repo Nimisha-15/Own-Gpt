@@ -9,23 +9,33 @@ const messageRouter = require("./src/routes/message.routes");
 const PaymentRouter = require("./src/routes/payment.routes");
 const { stripeWebhook } = require("./src/controller/webhook.controller.js"); 
 
-const app = express();  // ← Create app FIRST
+const app = express();
+
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "http://localhost:3000",
+  process.env.FRONTEND_URL,
+].filter(Boolean);
+
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "Cookie"]
+}));
 
 connectDb();
 
 // Stripe webhook — MUST be before express.json()
 app.post('/api/stripe', express.raw({ type: 'application/json' }), stripeWebhook);
 
-// Middlewares (after webhook!)
-app.use(cors({
-  origin: [
-    "http://localhost:5173",
-    "http://localhost:5174",
-    "http://localhost:3000",
-    process.env.FRONTEND_URL, // Deployed URL via .env
-  ].filter(Boolean), 
-  credentials: true,
-}));
 app.use(express.json());
 app.use(cookieParser());
 
