@@ -41,6 +41,7 @@ app.use(cookieParser());
 
 // Routes
 app.get('/', (req, res) => res.send('server is live'));
+app.get('/api/health', (req, res) => res.json({ status: 'live', version: '2.0-bearer-fixed', timestamp: new Date() }));
 app.use('/api/user', router);
 app.use('/api/chat', ChatRouter);
 app.use('/api/message', messageRouter);
