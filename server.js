@@ -15,6 +15,7 @@ const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:5174",
   "http://localhost:3000",
+  "https://sensational-pastelito-de53fe.netlify.app", // 🔥 FIXED: Added your Netlify Production URL
   process.env.FRONTEND_URL,
 ].filter(Boolean);
 
@@ -23,12 +24,14 @@ app.use(cors({
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
+      console.log("🚫 CORS blocked for origin:", origin);
       callback(new Error('Not allowed by CORS'));
     }
   },
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "Cookie"]
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
+  optionsSuccessStatus: 200 // Some legacy browsers (IE11, various SmartTVs) choke on 204
 }));
 
 connectDb();
