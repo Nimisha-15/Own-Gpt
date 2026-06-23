@@ -3,6 +3,7 @@ const jwt = require("jsonwebtoken")
 const bcrypt = require("bcrypt")
 const chatModel = require("../models/chat.model")
 const messageRouter = require("../routes/message.routes")
+const { OAuth2Client } = require("google-auth-library");
 
 const registerController = async (req, res) => {
   try {
@@ -65,6 +66,7 @@ const registerController = async (req, res) => {
 const loginController = async (req, res) => {
   try {
     const { email, password } = req.body;
+    
 
     if (!email || !password) {
       return res.status(400).json({
@@ -118,6 +120,84 @@ res.cookie("token", token, cookieOptions);
 };
 
 
+
+
+
+const googleLoginController = async (req, res) => {
+  try {
+    const { credential } = req.body;
+
+    if (!credential) {
+      return res.status(400).json({
+        success: false,
+        message: "Google credential missing",
+      });
+    }
+
+    const ticket = await client.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+
+    const {
+      email,
+      name,
+      picture,
+      email_verified,
+    } = payload;
+
+    if (!email_verified) {
+      return res.status(400).json({
+        success: false,
+        message: "Google email is not verified",
+      });
+    }
+
+    // Find existing user
+    let user = await userModel.findOne({ email });
+
+    // Create user if doesn't exist
+    if (!user) {
+      user = await userModel.create({
+        name,
+        email,
+        password: Math.random().toString(36), // placeholder password
+        picture,
+      });
+    }
+
+    // Create JWT
+    const token = jwt.sign(
+      { id: user._id },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: "30d",
+      }
+    );
+
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: false,
+      sameSite: "lax",
+    });
+
+    return res.status(200).json({
+      success: true,
+      token,
+      user,
+    });
+
+  } catch (error) {
+    console.log("Google Login Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Google login failed",
+    });
+  }
+};
 // logout hona
 const logoutController = async (req, res) => {
   try {
@@ -174,9 +254,12 @@ const getPublishedImages = async (req, res) => {
   }
 };
 
+
+
 module.exports={
     registerController,
     loginController,
     getPublishedImages,
-    logoutController
+    logoutController,
+    googleLoginController,
 }

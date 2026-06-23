@@ -9,67 +9,66 @@ const textMessageController = async (req, res) => {
     const { chatId, prompt } = req.body;
     const userId = req.user._id;
 
-    // Validate chat
     const chat = await chatModel.findOne({ _id: chatId, userId });
     if (!chat) {
       return res.status(404).json({ success: false, message: "Chat not found" });
     }
 
-    // Check credits (add deduction for text, e.g., -1)
     if (req.user.credits < 1) {
       return res.status(403).json({ message: "Insufficient credits" });
     }
 
-    // Push user message to DB
-    await chatModel.findOneAndUpdate(
-      { _id: chatId, userId },
-      { 
-        $push: { 
-          messages: { 
-            role: "user", 
-            content: prompt, 
-            timestamp: Date.now(), 
-            isImage: false 
-          } 
-        },
-        $set: { updatedAt: new Date(),
-          name: chat.name === "New Chat" ? prompt.slice(0, 40) + (prompt.length > 40 ? "..." : "") : chat.name
-         }  // Update timestamp
-      }
-    );
+    const userMessage = {
+      role: "user",
+      content: prompt,
+      timestamp: Date.now(),
+      isImage: false,
+    };
 
-    // Generate AI response with Gemini
-    const result = await gemini.generateContent(prompt);
-    const aiResponse = await result.response.text();
-    console.log(aiResponse);
+    const result = await gemini.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt,
+    });
 
-    // Push assistant message to DB
+    const aiResponse = result.text;
     const reply = {
       role: "assistant",
       content: aiResponse,
       timestamp: Date.now(),
-      isImage: false
+      isImage: false,
     };
-    await chatModel.findOneAndUpdate(
+
+    const updatedChat = await chatModel.findOneAndUpdate(
       { _id: chatId, userId },
-      { 
-        $push: { messages: reply },
-        $set: { updatedAt: new Date() }
-      }
+      {
+        $push: {
+          messages: {
+            $each: [userMessage, reply],
+          },
+        },
+        $set: {
+          updatedAt: new Date(),
+          name:
+            chat.name === "New Chat"
+              ? prompt.slice(0, 40) + (prompt.length > 40 ? "..." : "")
+              : chat.name,
+        },
+      },
+      { new: true },
     );
 
-    // Deduct credits
     await userModel.updateOne({ _id: userId }, { $inc: { credits: -1 } });
 
-    res.json({ 
-      success: true, 
-      reply 
+    res.json({
+      success: true,
+      chat: updatedChat,
+      reply,
     });
   } catch (error) {
     console.error("TEXT ERROR:", error);
     res.status(500).json({ success: false, message: error.message });
   }
-}
+};
 
 // Image Generation message controller (unchanged, but added updatedAt for consistency)
 const imageMessageController = async (req, res) => {
@@ -104,19 +103,23 @@ const imageMessageController = async (req, res) => {
       }
     );
 
-    // Encode prompt
     const encodedPrompt = encodeURIComponent(prompt);
 
-    // Construct ImageKit AI Generation URL
-    const generatedImageURL = `${process.env.IMAGEKIT_URL_ENDPOINT}/ik-genimg-prompt-${encodedPrompt}/mygpt/${Date.now()}.png?tr=w-800,h-800`;
-    
-    // Trigger generation by fetching from ImageKit
-    const aiImageResponse = await axios.get(generatedImageURL, {
-      responseType: "arraybuffer"
+    const imageResult = await gemini.models.generateImages({
+      model: "imagen-4.0-generate-001",
+      prompt,
+      config: {
+        numberOfImages: 1,
+      },
     });
 
-    // Convert to base64
-    const base64Image = `data:image/png;base64,${Buffer.from(aiImageResponse.data, "binary").toString('base64')}`;
+    const aiImageResponse = imageResult.generatedImages?.[0]?.image;
+
+    if (!aiImageResponse?.imageBytes) {
+      return res.status(500).json({ success: false, message: "Image generation failed" });
+    }
+
+    const base64Image = `data:image/png;base64,${Buffer.from(aiImageResponse.imageBytes, "base64").toString("base64")}`;
 
     // Upload to ImageKit media library
     const uploadResponse = await imagekit.upload({
@@ -124,6 +127,16 @@ const imageMessageController = async (req, res) => {
       fileName: `${Date.now()}.png`,
       folder: "MyGpt"
     });
+
+//     console.log(
+//   "AI response content-type:",
+//   aiImageResponse.headers["content-type"]
+// );
+
+// console.log(
+//   "AI response size:",
+//   aiImageResponse.data.length
+// );
 
     const reply = {
       role: "assistant",
@@ -133,21 +146,21 @@ const imageMessageController = async (req, res) => {
       isPublished
     };
 
-    // Push reply to DB
-    await chatModel.findOneAndUpdate(
+    const updatedChat = await chatModel.findOneAndUpdate(
       { _id: chatId, userId },
-      { 
+      {
         $push: { messages: reply },
-        $set: { updatedAt: new Date() }
-      }
+        $set: { updatedAt: new Date() },
+      },
+      { new: true },
     );
 
-    // Deduct credits
     await userModel.updateOne({ _id: userId }, { $inc: { credits: -2 } });
 
     res.status(200).json({
       success: true,
-      reply
+      chat: updatedChat,
+      reply,
     });
 
   } catch (error) {
