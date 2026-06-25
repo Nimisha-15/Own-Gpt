@@ -5,6 +5,7 @@ const chatModel = require("../models/chat.model")
 const messageRouter = require("../routes/message.routes")
 const { OAuth2Client } = require("google-auth-library");
 
+
 const registerController = async (req, res) => {
   try {
     console.log("Register body:", req.body); // Debug
@@ -121,7 +122,11 @@ res.cookie("token", token, cookieOptions);
 
 
 
+const client = new OAuth2Client(
 
+  process.env.GOOGLE_CLIENT_ID
+
+);
 
 const googleLoginController = async (req, res) => {
   try {

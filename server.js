@@ -14,6 +14,7 @@ const app = express();
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
+  "https://boxto.netlify.app",
   "https://sensational-pastelito-de53fe.netlify.app", // 🔥 FIXED: Added your Netlify Production URL
   process.env.FRONTEND_URL,
 ].filter(Boolean);
